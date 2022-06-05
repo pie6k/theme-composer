@@ -1,46 +1,77 @@
-import { getIsLeaf } from "./leaf/leaf";
+import { getIsLeaf, Leaf } from "./leaf/leaf";
+
+const realValueGetterMap = new WeakMap<object, (...args: any[]) => any>();
 
 export function createInputProxy<T extends object, A extends any[]>(
-  input: T,
-  injectedGetter: (...args: A) => T
+  templateGetter: () => T,
+  realGetter: (...args: A) => T
 ): T {
-  const proxy = new Proxy(input, {
+  const proxy = new Proxy(templateGetter, {
     get(target, key, receiver) {
-      console.log("prox get", key);
-      function getInjected(...args: any[]) {
-        console.log("p get injected", { args, key, target });
-        const injectedValue = injectedGetter(...(args as A));
+      const template = templateGetter();
 
-        // console.log({ injectedValue, key, receiver });
-
-        return Reflect.get(injectedValue, key, receiver);
+      if (template === undefined) {
+        return undefined;
       }
 
-      const actualResult = Reflect.get(target, key, receiver);
+      const templateProp = Reflect.get(template, key);
 
-      return createInputProxy(actualResult, getInjected);
+      function realPropGetter(...args: A) {
+        const real = realGetter(...args);
+
+        return Reflect.get(real, key);
+      }
+
+      return createInputProxy(() => templateProp, realPropGetter);
     },
     apply(target, thisArg, argArray) {
-      console.log("p apply", { target, argArray });
-      function getInjected(...args: A) {
-        console.log("getting injected", { argArray });
-        const injectedFunction = injectedGetter(...(args as A));
+      /**
+       * We're trying to apply on template proxy. It can mean 2 things
+       *
+       * 1. If we apply on some part that is also function on template - we should follow the template and continue proxying
+       * 2. If we apply on some part that is not a function on template - it means we want a result.
+       * Exception is leaf - we only apply it when we want a result, it is also applied by styled-components, not by ui code
+       */
+      const templateMaybeFunction = templateGetter();
 
-        return Reflect.apply(injectedFunction as Function, thisArg, argArray);
+      // Applying leaf means we want it's output
+      if (getIsLeaf(templateMaybeFunction)) {
+        // We know we're applying on leaf, so real value will also be leaf
+        const realLeaf = realGetter(...(argArray as A)) as Leaf<any, any>;
+        // Apply it to get the output
+        return realLeaf();
       }
 
-      if (getIsLeaf(target)) {
-        console.log("is leaf", target.$data);
-        return getInjected(...argArray);
+      // We apply, but template is not a function - it means real value is requested
+      if (typeof templateMaybeFunction !== "function") {
+        return realGetter(...(argArray as A));
       }
 
-      const actualResult = Reflect.apply(target as Function, thisArg, argArray);
+      // We apply and template is a function as well - it means we keep proxying as we follow template
+      const templateResult = Reflect.apply(
+        templateMaybeFunction,
+        null,
+        argArray
+      );
 
-      console.log("apply not leaf", { actualResult });
+      // To get real value we first get real using root input arguments, and then we know real value is a function, so we apply arguments that were passed to this apply
+      function realValueGetter(...args: A): T {
+        const realFunction = realGetter(...args);
 
-      return createInputProxy(actualResult, getInjected);
+        const realFunctionReturnValue = Reflect.apply(
+          realFunction as Function,
+          null,
+          argArray
+        );
+
+        return realFunctionReturnValue;
+      }
+
+      return createInputProxy(() => templateResult, realValueGetter);
     },
   });
+
+  realValueGetterMap.set(proxy, realGetter);
 
   return proxy;
 }

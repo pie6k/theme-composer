@@ -1,4 +1,4 @@
-import { createInputProxy } from "./inputProxy";
+import { createInputProxy, getRealValue } from "./inputProxy";
 import { Leaf } from "./leaf/leaf";
 import { deepMerge, DeepPartial } from "./utils/deepMerge";
 
@@ -11,9 +11,12 @@ type Theme<T> = T & {
 };
 
 export function createTheme<T extends object>(theme: T) {
-  const proxiedTheme = createInputProxy(theme, (props: ThemeProps<T>) => {
-    return props.theme;
-  });
+  const proxiedTheme = createInputProxy(
+    () => theme,
+    (props: ThemeProps<T>) => {
+      return props.theme;
+    }
+  );
 
   function getValue<O>(leaf: () => O, props: ThemeProps<T>) {
     console.log("will get");
@@ -21,6 +24,8 @@ export function createTheme<T extends object>(theme: T) {
     console.log("has trap", !!proxyTrap);
 
     console.log("with trap", { props });
+
+    // return dgetRealValue(proxyTrap, props)
 
     return proxyTrap(...([props] as any as [])) as O;
   }
