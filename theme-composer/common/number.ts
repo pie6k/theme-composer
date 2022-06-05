@@ -1,4 +1,5 @@
 import { css } from "../css/interpolator";
+import { typedKeys } from "../leaf/utils";
 import { styledLeaf } from "../styleLeaf";
 
 function getValueWithUnit(value: number, unit?: string) {
@@ -88,7 +89,7 @@ const numberBase = styledLeaf()
         columnGap,
       };
 
-      Object.keys(properties).forEach((property) => {
+      typedKeys(properties).forEach((property) => {
         const value = properties[property];
 
         if (value !== true) return;

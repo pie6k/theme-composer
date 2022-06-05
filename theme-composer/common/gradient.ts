@@ -18,9 +18,9 @@ function resolveGradientSteps(input: GradientSteps): GradientStep[] {
   const stepsCount = input.length;
 
   const steps: GradientStep[] = input.map((color, index) => {
-    const progress = index / stepsCount;
+    const progress: number = index / stepsCount;
 
-    return { color, progress };
+    return { color: color as string, progress };
   });
 
   return steps;
@@ -40,7 +40,7 @@ function getGradientBackground(steps: GradientStep[], direction: number) {
 }
 
 export const gradient = styledLeaf()
-  .prop<"steps", GradientSteps>("steps")
+  .requiredProp<"steps", GradientSteps>("steps")
   .prop<"direction", number>("direction")
   .flag("asBg", ({ direction = 45, steps }) => {
     return getGradientBackground(resolveGradientSteps(steps), direction);

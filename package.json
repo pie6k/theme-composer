@@ -8,6 +8,7 @@
     "theme-composer"
   ],
   "devDependencies": {
+    "@types/color": "^3.0.3",
     "@types/jest": "^28.1.0",
     "@types/styled-components": "^5.1.25",
     "jest": "^28.1.0",
