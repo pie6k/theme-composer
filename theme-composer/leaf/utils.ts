@@ -30,3 +30,18 @@ export function isNotPrimitive(input: unknown): input is object {
 
   return input !== null;
 }
+
+type ValueBox<T> = { value: T };
+
+export function simpleMemoize<R>(callback: () => R) {
+  let cached: ValueBox<R> | null = null;
+  return function memoized() {
+    if (cached) return cached.value;
+
+    const value = callback();
+
+    cached = { value };
+
+    return value;
+  };
+}

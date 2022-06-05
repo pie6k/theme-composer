@@ -1,4 +1,4 @@
-import { createLeaf } from "../leaf/leaf";
+import { createLeaf } from "../leaf/leafComposer";
 
 describe("base", () => {
   it("works", () => {
@@ -125,5 +125,34 @@ describe("base", () => {
     expect(foo.bar(3).$data).toEqual({ foo: 3, bar: 3 });
     expect(foo.bar(3).foo(4).$data).toEqual({ foo: 4, bar: 3 });
     expect(foo.$data).toEqual({ foo: 3 });
+  });
+
+  it("allows value to be overwritten", () => {
+    const foo = createLeaf()
+      .prop("count", (count) => count)
+      .done();
+
+    expect(foo.count(3)()).toEqual([3]);
+    expect(foo.count(3).count(4)()).toEqual([3, 4]);
+    expect(foo.count(3).count(4).$data).toEqual({ count: 4 });
+  });
+
+  it("allows modifying data from builder", () => {
+    const inc = createLeaf()
+      .requiredProp("num", null, 2)
+      .flag("double", (data) => {
+        data.num = data.num * 2;
+      })
+      .done();
+
+    expect(inc.double.$data.num).toBe(4);
+    expect(inc.double.double.$data.num).toBe(8);
+  });
+
+  it("supports adding multiple defaults", () => {
+    const foo = createLeaf().addDefaults({ foo: 2, bar: 3 }).done();
+
+    expect(foo.$data).toEqual({ foo: 2, bar: 3 });
+    expect(foo.foo(4).$data).toEqual({ foo: 4, bar: 3 });
   });
 });

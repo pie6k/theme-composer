@@ -1,4 +1,5 @@
 import { createInputProxy } from "./inputProxy";
+import { Leaf } from "./leaf/leaf";
 import { deepMerge, DeepPartial } from "./utils/deepMerge";
 
 interface ThemeProps<T> {
@@ -9,14 +10,24 @@ type Theme<T> = T & {
   raw: T;
 };
 
-export function createTheme<T extends object>(theme: T): Theme<T> {
+export function createTheme<T extends object>(theme: T) {
   const proxiedTheme = createInputProxy(theme, (props: ThemeProps<T>) => {
     return props.theme;
   });
 
+  function getValue<O>(leaf: () => O, props: ThemeProps<T>) {
+    console.log("will get");
+    const proxyTrap = leaf();
+    console.log("has trap", !!proxyTrap);
+
+    console.log("with trap", { props });
+
+    return proxyTrap(...([props] as any as [])) as O;
+  }
+
   Reflect.set(theme, "raw", theme);
 
-  return proxiedTheme as Theme<T>;
+  return [proxiedTheme as Theme<T>, getValue] as const;
 }
 
 export type ThemeOverwrite<T extends object> = DeepPartial<T>;

@@ -1,4 +1,4 @@
-import { createLeaf } from "./leaf/leaf";
+import { createLeaf } from "./leaf/leafComposer";
 
 type StyleOutput = string;
 

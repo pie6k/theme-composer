@@ -1,14 +1,17 @@
 import { getIsLeaf } from "./leaf/leaf";
-import { typedKeys } from "./leaf/utils";
 
-export function createInputProxy<T extends object>(
+export function createInputProxy<T extends object, A extends any[]>(
   input: T,
-  injectedGetter: (...args: any[]) => T
+  injectedGetter: (...args: A) => T
 ): T {
   const proxy = new Proxy(input, {
     get(target, key, receiver) {
+      console.log("prox get", key);
       function getInjected(...args: any[]) {
-        const injectedValue = injectedGetter(...args);
+        console.log("p get injected", { args, key, target });
+        const injectedValue = injectedGetter(...(args as A));
+
+        // console.log({ injectedValue, key, receiver });
 
         return Reflect.get(injectedValue, key, receiver);
       }
@@ -18,17 +21,22 @@ export function createInputProxy<T extends object>(
       return createInputProxy(actualResult, getInjected);
     },
     apply(target, thisArg, argArray) {
-      function getInjected() {
-        const injectedFunction = injectedGetter(...argArray);
+      console.log("p apply", { target, argArray });
+      function getInjected(...args: A) {
+        console.log("getting injected", { argArray });
+        const injectedFunction = injectedGetter(...(args as A));
 
         return Reflect.apply(injectedFunction as Function, thisArg, argArray);
       }
 
       if (getIsLeaf(target)) {
-        return getInjected();
+        console.log("is leaf", target.$data);
+        return getInjected(...argArray);
       }
 
       const actualResult = Reflect.apply(target as Function, thisArg, argArray);
+
+      console.log("apply not leaf", { actualResult });
 
       return createInputProxy(actualResult, getInjected);
     },

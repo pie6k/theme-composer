@@ -4,11 +4,11 @@ import { createTheme } from "../theme";
 describe("theme", () => {
   it("proxies", () => {
     const leafA = styledLeaf()
-      .flag("flag")
-      .done(() => ["a"]);
+      .prop("flag", (flag: string) => flag)
+      .done(() => "a");
     const leafB = styledLeaf()
-      .flag("flag")
-      .done(() => ["b"]);
+      .prop("flag", (flag: string) => flag)
+      .done(() => "b");
 
     const rawTheme = {
       foo: {
@@ -22,14 +22,17 @@ describe("theme", () => {
       },
     };
 
-    const proxiedTheme = createTheme(rawTheme);
+    const [proxiedTheme, getValue] = createTheme(rawTheme);
 
-    expect(proxiedTheme.foo.bar.flag.flag({ theme: rawTheme })).toEqual([
-      ["a"],
-    ]);
-    expect(proxiedTheme.foo.bar.flag.flag({ theme: rawThemeB })).toEqual([
-      ["b"],
-    ]);
-    // expect()
+    expect(
+      getValue(() => proxiedTheme.foo.bar.flag("1"), { theme: rawTheme })
+    ).toEqual(["1", "a"]);
+
+    expect(
+      getValue(() => proxiedTheme.foo.bar.flag("2"), { theme: rawThemeB })
+    ).toEqual(["2", "b"]);
+    // expect(
+    //   getValue(() => proxiedTheme.foo.bar.flag("2"), { theme: rawThemeB })
+    // ).toEqual(["b"]);
   });
 });

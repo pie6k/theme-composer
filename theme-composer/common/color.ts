@@ -84,7 +84,11 @@ const colorBase = styledLeaf()
       }
     `;
   })
-  .done();
+  .done(({ asBg, asColor, info }) => {
+    if (!asBg && !asColor) {
+      return info.value;
+    }
+  });
 
 function setColorOpacity(color: string, opacity: number): string {
   const parsedColor = new Color(color);
