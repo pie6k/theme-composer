@@ -5,5 +5,8 @@
   "license": "MIT",
   "peerDependencies": {
     "styled-components": "*"
+  },
+  "dependencies": {
+    "color": "^4.2.3"
   }
 }

@@ -1,6 +1,6 @@
 import { createFunctionWithProps, FunctionWithProps } from "./function";
 import { PickByValue } from "./types";
-import { typedKeys } from "./utils";
+import { isNotPrimitive, isPrimitive, typedKeys } from "./utils";
 
 type LeafMethods<T, Output> = {
   [key in keyof T]: T[key] extends true
@@ -9,6 +9,8 @@ type LeafMethods<T, Output> = {
 };
 
 type Leaf<T, Output> = FunctionWithProps<[], Output[], LeafMethods<T, Output>>;
+
+type Maybe<T> = T | undefined | void;
 
 export type Identity<T> = T extends object
   ? {
@@ -19,11 +21,15 @@ export type Identity<T> = T extends object
 interface LeafComposer<T, Output> {
   prop<K extends string, A>(
     key: K,
-    getter?: (value: A, current: Partial<T>) => Output
+    getter?: (value: A, current: Partial<T>) => Maybe<Output>
+  ): LeafComposer<Identity<T & { [key in K]: A }>, Output>;
+  requiredProp<K extends string, A>(
+    key: K,
+    getter?: (value: A, current: Partial<T>) => Maybe<Output>
   ): LeafComposer<Identity<T & { [key in K]: A }>, Output>;
   flag<K extends string>(
     key: K,
-    getter?: (current: Partial<T>) => Output
+    getter?: (current: Partial<T>) => Maybe<Output>
   ): LeafComposer<Identity<T & { [key in K]: true }>, Output>;
   done(getter?: (values: Partial<T>) => Output): Leaf<T, Output>;
 }
@@ -31,10 +37,11 @@ interface LeafComposer<T, Output> {
 type Getter<T, Output> = (data: T) => Output;
 
 type LeafPropInfo<T, Output> =
-  | { type: "flag"; getter?: Getter<Partial<T>, Output> }
+  | { type: "flag"; getter?: Getter<Partial<T>, Maybe<Output>> }
   | {
-      getter?: Getter<Partial<T>, Output>;
+      getter?: Getter<Partial<T>, Maybe<Output>>;
       type: "prop";
+      isRequired?: true;
     };
 
 type PropsMap<T, Output> = Record<keyof T, LeafPropInfo<T, Output>>;
@@ -42,6 +49,14 @@ type PropsMap<T, Output> = Record<keyof T, LeafPropInfo<T, Output>>;
 interface LeafInstancePropFlag<T, K extends keyof T, Output> {
   name: K;
   value: T[K];
+}
+
+const isLeafSet = new WeakSet<Leaf<any, any>>();
+
+export function getIsLeaf(input: unknown): input is Leaf<any, any> {
+  if (isPrimitive(input)) return false;
+
+  return isLeafSet.has(input as Leaf<any, any>);
 }
 
 function createLeafInstance<T, Output>(
@@ -104,7 +119,9 @@ function createLeafInstance<T, Output>(
       if (correspondingProp.getter) {
         const nextOutput = correspondingProp.getter(data);
 
-        output.push(nextOutput);
+        if (nextOutput !== undefined) {
+          output.push(nextOutput as Output);
+        }
       }
     }
 
@@ -116,6 +133,8 @@ function createLeafInstance<T, Output>(
   }
 
   const leaf: Leaf<T, Output> = createFunctionWithProps(getOutput, methods);
+
+  isLeafSet.add(leaf);
 
   return leaf;
 }
@@ -137,7 +156,7 @@ function createLeafComposer<T, Output>(
         );
       }
 
-      function wrappedGetter(data: Partial<T>): Output {
+      function wrappedGetter(data: Partial<T>): Maybe<Output> {
         const thisKeyData = data[key as unknown as keyof T];
 
         return getter(thisKeyData as any, data);
@@ -146,6 +165,40 @@ function createLeafComposer<T, Output>(
       const propInfo: LeafPropInfo<T, Output> = {
         type: "prop",
         getter: wrappedGetter,
+      };
+
+      const newPropsMap: PropsMap<T, Output> = {
+        ...props,
+        [key as unknown as keyof T]: propInfo,
+      };
+
+      return createLeafComposer(newPropsMap, initialGetter) as LeafComposer<
+        any,
+        any
+      >;
+    },
+    requiredProp(key, getter) {
+      if (key in props) {
+        throw new Error("Already there");
+      }
+
+      if (!getter) {
+        return createLeafComposer(
+          { ...props, [key]: { type: "prop", isRequired: true } },
+          initialGetter
+        );
+      }
+
+      function wrappedGetter(data: Partial<T>): Maybe<Output> {
+        const thisKeyData = data[key as unknown as keyof T];
+
+        return getter(thisKeyData as any, data);
+      }
+
+      const propInfo: LeafPropInfo<T, Output> = {
+        type: "prop",
+        getter: wrappedGetter,
+        isRequired: true,
       };
 
       const newPropsMap: PropsMap<T, Output> = {
