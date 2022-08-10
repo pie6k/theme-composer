@@ -30,6 +30,8 @@ describe("theme", () => {
       getValue(() => proxiedTheme.foo.bar.flag("1"), { theme: rawTheme })
     ).toEqual(["1", "a"]);
 
+    //
+
     expect(
       getValue(() => proxiedTheme.foo.bar.flag("2").flag("3").isBig, {
         theme: rawThemeB,

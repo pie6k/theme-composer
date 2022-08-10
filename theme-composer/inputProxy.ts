@@ -19,6 +19,8 @@ export function createInputProxy<T extends object, A extends any[]>(
       function realPropGetter(...args: A) {
         const real = realGetter(...args);
 
+        console.log({ real, key });
+
         return Reflect.get(real, key);
       }
 
@@ -35,12 +37,12 @@ export function createInputProxy<T extends object, A extends any[]>(
       const templateMaybeFunction = templateGetter();
 
       // Applying leaf means we want it's output
-      if (getIsLeaf(templateMaybeFunction)) {
-        // We know we're applying on leaf, so real value will also be leaf
-        const realLeaf = realGetter(...(argArray as A)) as Leaf<any, any>;
-        // Apply it to get the output
-        return realLeaf();
-      }
+      // if (getIsLeaf(templateMaybeFunction)) {
+      //   // We know we're applying on leaf, so real value will also be leaf
+      //   const realLeaf = realGetter(...(argArray as A)) as Leaf<any, any>;
+      //   // Apply it to get the output
+      //   return realLeaf();
+      // }
 
       // We apply, but template is not a function - it means real value is requested
       if (typeof templateMaybeFunction !== "function") {

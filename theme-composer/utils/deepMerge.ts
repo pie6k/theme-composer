@@ -1,16 +1,21 @@
-export function isObject(item) {
+import { typedKeys } from "../leaf/utils";
+
+export function isObject(item: unknown) {
   return item && typeof item === "object" && !Array.isArray(item);
 }
 
 export function deepMergeSingle<T>(target: T, source: DeepPartial<T>): T {
-  let output = Object.assign({}, target);
+  let output = Object.assign({}, target) as T;
   if (isObject(target) && isObject(source)) {
-    Object.keys(source).forEach((key) => {
+    typedKeys(source as T).forEach((key) => {
       if (isObject(source[key])) {
         if (!(key in target)) {
           Object.assign(output, { [key]: source[key] });
         } else {
-          output[key] = deepMerge(target[key], source[key]);
+          output[key] = deepMerge(
+            target[key],
+            source[key] as any as DeepPartial<T[keyof T]>
+          );
         }
       } else {
         Object.assign(output, { [key]: source[key] });
